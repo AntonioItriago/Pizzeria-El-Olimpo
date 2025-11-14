@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Menú Pizzería - Carga Dinámica (DEBUG)</title>
+    <title>Menú Pizzería - Carga Dinámica</title>
     <style>
         /* Estilos generales */
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f8f8f8; color: #333; }
@@ -15,7 +15,7 @@
         .producto-info { flex-grow: 1; }
         .producto-info h4 { margin: 0; font-size: 1.1em; }
         .producto-info p { margin: 2px 0 0; font-size: 0.9em; color: #777; }
-        .producto-precio { font-weight: bold; color: #4CAF50; margin-left: 15px; width: 60px; text-align: right; }
+        .producto-precio { font-weight: bold; color: #4CAF50; margin-left: 15px; width: 80px; text-align: right; } 
         .controls { display: flex; align-items: center; gap: 5px; }
         .controls button { background-color: #d32f2f; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; transition: background-color 0.3s; }
         .controls button:hover { background-color: #b71c1c; }
@@ -51,15 +51,13 @@
 <body>
 
     <div class="container">
-        <h1>Pizzería "El Olimpo"</h1>
-
-        <div id="menu-secciones">
+        <h1>Pizzería "El Olimpo"</h1> <div id="menu-secciones">
             <p>Cargando menú...</p>
         </div>
         
         <div class="total-container">
             <div>Total estimado del pedido:</div>
-            <span>$<span id="total">0.00</span></span>
+            <span><span id="moneda-total">Bs</span><span id="total">0.00</span></span>
         </div>
 
         <button class="btn-ordenar" onclick="mostrarResumen()">Generar Orden</button>
@@ -69,7 +67,7 @@
         <div class="modal-content">
             <h3>📝 Resumen de tu Pedido</h3>
             <ul id="resumen-lista"></ul>
-            <p class="total">Total: $<span id="resumen-total">0.00</span></p>
+            <p class="total">Total: <span id="moneda-resumen">Bs</span><span id="resumen-total">0.00</span></p>
             <button class="btn-ordenar btn-whatsapp" onclick="enviarPedidoWhatsApp()">📞 Ordenar por WhatsApp</button>
             <button class="btn-ordenar" style="background-color: #777;" onclick="cerrarResumen()">Volver al Menú</button>
         </div>
@@ -95,64 +93,57 @@
         let productosDB = {}; 
         const carrito = {};
 
-        // --- FUNCIONES CENTRALES DE CARGA Y PROCESAMIENTO (MODIFICADAS CON DEBUG) ---
+        // --- FUNCIONES CENTRALES DE CARGA Y PROCESAMIENTO ---
 
         async function cargarMenu() {
             document.getElementById('menu-secciones').innerHTML = '<p>Intentando cargar datos...</p>';
             try {
-                // 1. Descarga el archivo CSV
                 const response = await fetch(CSV_URL);
                 if (!response.ok) {
-                    // Si el estado HTTP no es 200 (OK), lanza un error
-                    throw new Error(`Error HTTP: ${response.status}. ¿Está bien publicada la URL?`);
+                    throw new Error(`Error HTTP: ${response.status}.`);
                 }
                 const csvText = await response.text();
-                
-                console.log("--- DEBUG: CSV TEXTO COMPLETO (Verifica que sea el de tu hoja) ---");
-                console.log(csvText); // Muestra el texto completo
-                
-                // 2. Procesa el texto CSV
                 productosDB = parsearCSV(csvText);
 
-                // 3. Renderiza y calcula
                 renderizarMenu();
                 actualizarTotal();
             } catch (error) {
                 console.error("Error en cargarMenu:", error);
-                document.getElementById('menu-secciones').innerHTML = '<h2>¡Error! No se pudo cargar el menú.</h2><p>Verifica la URL, el formato CSV y revisa la Consola del navegador (F12) para detalles.</p>';
+                document.getElementById('menu-secciones').innerHTML = '<h2>¡Error! No se pudo cargar el menú.</h2><p>Verifica la URL, la publicación y el formato de datos (ej: el precio).</p>';
             }
         }
         
         function parsearCSV(csv) {
             const data = {};
-            
-            // Reemplaza los retornos de carro de Windows/Mac por retornos de carro Unix para estandarizar
             const lineas = csv.replace(/\r/g, '').split('\n');
             
-            console.log("DEBUG: Número total de líneas (incluyendo encabezados):", lineas.length);
+            console.log("DEBUG: Iniciando análisis con separador: ; (punto y coma)");
 
-            // Omitimos la primera línea (asumiendo que son cabeceras)
             for (let i = 1; i < lineas.length; i++) {
                 const linea = lineas[i].trim();
-                if (linea.length === 0) continue; // Ignora líneas completamente vacías
+                if (linea.length === 0) continue; 
 
-                const columnas = linea.split(',');
+                // Usamos punto y coma (;) como separador de columnas
+                const columnas = linea.split(';'); 
                 
                 if (columnas.length < 5) {
                     console.error("DEBUG: Línea ignorada (menos de 5 columnas):", linea);
                     continue; 
                 }
 
-                // Mapea y limpia los valores de las columnas
                 try {
+                    // 1. Mapea y limpia las columnas: ID, NOMBRE, PRECIO, DESCRIPCIÓN, CATEGORÍA
                     const [id, nombre, precioStr, desc, categoria] = columnas.map(c => c.trim().replace(/"/g, ''));
                     
                     if (!id || !precioStr || !categoria) {
-                        console.error("DEBUG: Fila con campos vacíos esenciales (ID, PRECIO o CATEGORÍA):", linea);
+                        console.error("DEBUG: Fila con campos vacíos esenciales:", linea);
                         continue;
                     }
                     
-                    const precio = parseFloat(precioStr);
+                    // 2. Convierte la coma decimal (,) a punto decimal (.)
+                    const precioLimpio = precioStr.replace(',', '.');
+                    const precio = parseFloat(precioLimpio);
+
                     if (isNaN(precio)) {
                         console.error("DEBUG: FALLO CRÍTICO: El PRECIO no es un número. Precio recibido:", precioStr, "en línea:", linea);
                         continue;
@@ -160,7 +151,7 @@
 
                     const producto = { id, nombre, precio, desc, categoria };
 
-                    // Agrupa por Categoría
+                    // 3. Agrupa por Categoría
                     if (!data[categoria]) {
                         data[categoria] = [];
                     }
@@ -170,113 +161,20 @@
                     console.error("DEBUG: Error inesperado al procesar línea:", linea, e);
                 }
             }
-            console.log("DEBUG: Datos procesados (productosDB). Si está vacío, el CSV está malformado:", data);
+            console.log("DEBUG: Datos procesados (productosDB):", data);
             return data;
         }
 
 
-        // --- FUNCIONES DE RENDERIZADO Y LÓGICA (RESTO DEL CÓDIGO) ---
+        // --- FUNCIONES DE RENDERIZADO Y LÓGICA ---
 
         function renderizarMenu() {
             const menuDiv = document.getElementById('menu-secciones');
             let html = '';
             
-            // Itera sobre las categorías obtenidas del Sheets
             for (const seccion in productosDB) {
                 html += `<h2>${seccion}</h2><div class="menu-section">`;
                 productosDB[seccion].forEach(p => {
-                    carrito[p.id] = 0; // Inicializa el carrito para el nuevo producto
-                    html += `<div class="producto"><div class="producto-info"><h4>${p.nombre}</h4><p>${p.desc}</p></div><div class="producto-precio">$${p.precio.toFixed(2)}</div><div class="controls"><button onclick="cambiarCantidad('${p.id}', -1)">-</button><input type="number" id="cant-${p.id}" value="0" min="0" onchange="actualizarCarrito(this, '${p.id}')"><button onclick="cambiarCantidad('${p.id}', 1)">+</button></div></div>`;
-                });
-                html += '</div>';
-            }
-            menuDiv.innerHTML = html;
-        }
-
-        function cambiarCantidad(id, cambio) {
-            const input = document.getElementById(`cant-${id}`);
-            let nuevaCantidad = parseInt(input.value) + cambio;
-            if (nuevaCantidad < 0) nuevaCantidad = 0;
-            input.value = nuevaCantidad;
-            carrito[id] = nuevaCantidad; 
-            actualizarTotal();
-        }
-
-        function actualizarCarrito(inputElement, id) {
-            let nuevaCantidad = parseInt(inputElement.value);
-            if (isNaN(nuevaCantidad) || nuevaCantidad < 0) {
-                nuevaCantidad = 0;
-                inputElement.value = 0; 
-            }
-            carrito[id] = nuevaCantidad; 
-            actualizarTotal();
-        }
-
-        function obtenerItemsPedidos() {
-            const itemsPedidos = [];
-            for (const seccion in productosDB) {
-                productosDB[seccion].forEach(p => {
-                    const cantidad = carrito[p.id];
-                    if (cantidad > 0) {
-                        const precio = p.precio; 
-                        const subtotal = cantidad * precio;
-                        itemsPedidos.push({ nombre: p.nombre, cantidad: cantidad, subtotal: subtotal });
-                    }
-                });
-            }
-            return itemsPedidos;
-        }
-
-        function actualizarTotal() {
-            let totalGeneral = 0;
-            obtenerItemsPedidos().forEach(item => { totalGeneral += item.subtotal; });
-            document.getElementById('total').textContent = totalGeneral.toFixed(2);
-        }
-
-        // --- Funciones de Modal y WhatsApp ---
-
-        function mostrarResumen() {
-            const itemsPedidos = obtenerItemsPedidos();
-            const modal = document.getElementById('resumen-modal');
-            if (itemsPedidos.length === 0) {
-                alert('¡Tu carrito está vacío! Agrega productos para generar una orden.');
-                return;
-            }
-            document.getElementById('resumen-lista').innerHTML = itemsPedidos.map(item => `<li>**${item.cantidad}x** ${item.nombre} <span style="float:right;">$${item.subtotal.toFixed(2)}</span></li>`).join('');
-            document.getElementById('resumen-total').textContent = document.getElementById('total').textContent;
-            modal.style.display = 'flex';
-        }
-
-        function cerrarResumen() {
-            document.getElementById('resumen-modal').style.display = 'none';
-        }
-
-        function cerrarConfirmacion() {
-            document.getElementById('confirmacion-modal').style.display = 'none';
-        }
-
-        function enviarPedidoWhatsApp() {
-            const items = obtenerItemsPedidos();
-            const total = document.getElementById('total').textContent;
-
-            let mensaje = `¡Hola! Mi orden es la siguiente:\n\n`;
-            items.forEach(item => { mensaje += `${item.cantidad}x ${item.nombre}\n`; });
-            mensaje += `\n*TOTAL ESTIMADO: $${total}*`;
-            mensaje += '\n\nPor favor, necesito confirmar el pedido y los detalles de pago. ¡Gracias!';
-
-            const mensajeCodificado = encodeURIComponent(mensaje);
-            const urlWhatsApp = `https://wa.me/${NUMERO_WHATSAPP}?text=${mensajeCodificado}`;
-            
-            window.open(urlWhatsApp, '_blank');
-            cerrarResumen();
-            document.getElementById('confirmacion-modal').style.display = 'flex';
-        }
-
-        // El script se inicia llamando a la función de carga
-        window.onload = cargarMenu; 
-
-    </script>
-
-</body>
-
-</html>
+                    carrito[p.id] = 0; 
+                    // Mostrando en Bolívares
+                    html += `<div class="producto"><div class="producto-info"><h4>${p.nombre}</h4><p>${p.desc}</p></div><div class="producto-precio">Bs ${p.precio.
