@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Menú Pizzería - Carga Dinámica</title>
+    <title>Menú Pizzería "El Olimpo"</title>
     <style>
         /* Estilos generales */
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f8f8f8; color: #333; }
@@ -51,7 +51,9 @@
 <body>
 
     <div class="container">
-        <h1>Pizzería "El Olimpo"</h1> <div id="menu-secciones">
+        <h1>Pizzería "El Olimpo"</h1> 
+
+        <div id="menu-secciones">
             <p>Cargando menú...</p>
         </div>
         
@@ -84,9 +86,11 @@
 
     <script>
         // *** CONFIGURACIÓN CLAVE ***
+        // Reemplaza con el número de teléfono de la pizzería.
         const NUMERO_WHATSAPP = '584122525407'; 
 
         // ESTA ES LA URL DE TU GOOGLE SHEETS PUBLICADO EN FORMATO CSV
+        // Confirma que esta URL sea la correcta y esté publicada.
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS7PURG0pSdhs-owKEJTasIENYz59Mnl6aSiOwuZb0LHftbOFpGzjAkAWBbIyMWtUpuTPKsuegBTVOZ/pub?output=csv'; 
         // --------------------------------------------------------------------
 
@@ -177,4 +181,98 @@
                 productosDB[seccion].forEach(p => {
                     carrito[p.id] = 0; 
                     // Mostrando en Bolívares
-                    html += `<div class="producto"><div class="producto-info"><h4>${p.nombre}</h4><p>${p.desc}</p></div><div class="producto-precio">Bs ${p.precio.
+                    html += `<div class="producto"><div class="producto-info"><h4>${p.nombre}</h4><p>${p.desc}</p></div><div class="producto-precio">Bs ${p.precio.toFixed(2)}</div><div class="controls"><button onclick="cambiarCantidad('${p.id}', -1)">-</button><input type="number" id="cant-${p.id}" value="0" min="0" onchange="actualizarCarrito(this, '${p.id}')"><button onclick="cambiarCantidad('${p.id}', 1)">+</button></div></div>`;
+                });
+                html += '</div>';
+            }
+            menuDiv.innerHTML = html;
+        }
+
+        function cambiarCantidad(id, cambio) {
+            const input = document.getElementById(`cant-${id}`);
+            let nuevaCantidad = parseInt(input.value) + cambio;
+            if (nuevaCantidad < 0) nuevaCantidad = 0;
+            input.value = nuevaCantidad;
+            carrito[id] = nuevaCantidad; 
+            actualizarTotal();
+        }
+
+        function actualizarCarrito(inputElement, id) {
+            let nuevaCantidad = parseInt(inputElement.value);
+            if (isNaN(nuevaCantidad) || nuevaCantidad < 0) {
+                nuevaCantidad = 0;
+                inputElement.value = 0; 
+            }
+            carrito[id] = nuevaCantidad; 
+            actualizarTotal();
+        }
+
+        function obtenerItemsPedidos() {
+            const itemsPedidos = [];
+            for (const seccion in productosDB) {
+                productosDB[seccion].forEach(p => {
+                    const cantidad = carrito[p.id];
+                    if (cantidad > 0) {
+                        const precio = p.precio; 
+                        const subtotal = cantidad * precio;
+                        itemsPedidos.push({ nombre: p.nombre, cantidad: cantidad, subtotal: subtotal });
+                    }
+                });
+            }
+            return itemsPedidos;
+        }
+
+        function actualizarTotal() {
+            let totalGeneral = 0;
+            obtenerItemsPedidos().forEach(item => { totalGeneral += item.subtotal; });
+            document.getElementById('total').textContent = totalGeneral.toFixed(2);
+        }
+
+        // --- Funciones de Modal y WhatsApp ---
+
+        function mostrarResumen() {
+            const itemsPedidos = obtenerItemsPedidos();
+            const modal = document.getElementById('resumen-modal');
+            if (itemsPedidos.length === 0) {
+                alert('¡Tu carrito está vacío! Agrega productos para generar una orden.');
+                return;
+            }
+            // Mostrando en Bolívares
+            document.getElementById('resumen-lista').innerHTML = itemsPedidos.map(item => `<li>**${item.cantidad}x** ${item.nombre} <span style="float:right;">Bs ${item.subtotal.toFixed(2)}</span></li>`).join('');
+            document.getElementById('resumen-total').textContent = document.getElementById('total').textContent;
+            modal.style.display = 'flex';
+        }
+
+        function cerrarResumen() {
+            document.getElementById('resumen-modal').style.display = 'none';
+        }
+
+        function cerrarConfirmacion() {
+            document.getElementById('confirmacion-modal').style.display = 'none';
+        }
+
+        function enviarPedidoWhatsApp() {
+            const items = obtenerItemsPedidos();
+            const total = document.getElementById('total').textContent;
+
+            let mensaje = `¡Hola! Mi orden para Pizzería "El Olimpo" es la siguiente:\n\n`;
+            items.forEach(item => { mensaje += `${item.cantidad}x ${item.nombre}\n`; });
+            // Agregando "Bs" al mensaje de WhatsApp
+            mensaje += `\n*TOTAL ESTIMADO: Bs ${total}*`;
+            mensaje += '\n\nPor favor, necesito confirmar el pedido y los detalles de pago. ¡Gracias!';
+
+            const mensajeCodificado = encodeURIComponent(mensaje);
+            const urlWhatsApp = `https://wa.me/${NUMERO_WHATSAPP}?text=${mensajeCodificado}`;
+            
+            window.open(urlWhatsApp, '_blank');
+            cerrarResumen();
+            document.getElementById('confirmacion-modal').style.display = 'flex';
+        }
+
+        // El script se inicia llamando a la función de carga
+        window.onload = cargarMenu; 
+
+    </script>
+
+</body>
+</html>
