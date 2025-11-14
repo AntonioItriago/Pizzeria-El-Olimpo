@@ -90,7 +90,6 @@
         const NUMERO_WHATSAPP = '584122525407'; 
 
         // ESTA ES LA URL DE TU GOOGLE SHEETS PUBLICADO EN FORMATO CSV
-        // Confirma que esta URL sea la correcta y esté publicada.
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS7PURG0pSdhs-owKEJTasIENYz59Mnl6aSiOwuZb0LHftbOFpGzjAkAWBbIyMWtUpuTPKsuegBTVOZ/pub?output=csv'; 
         // --------------------------------------------------------------------
 
@@ -121,14 +120,14 @@
             const data = {};
             const lineas = csv.replace(/\r/g, '').split('\n');
             
-            console.log("DEBUG: Iniciando análisis con separador: ; (punto y coma)");
+            console.log("DEBUG: Iniciando análisis con separador: , (coma)");
 
             for (let i = 1; i < lineas.length; i++) {
                 const linea = lineas[i].trim();
                 if (linea.length === 0) continue; 
 
-                // Usamos punto y coma (;) como separador de columnas
-                const columnas = linea.split(';'); 
+                // Usamos coma (,) como separador de columnas
+                const columnas = linea.split(','); 
                 
                 if (columnas.length < 5) {
                     console.error("DEBUG: Línea ignorada (menos de 5 columnas):", linea);
@@ -145,7 +144,8 @@
                     }
                     
                     // 2. Convierte la coma decimal (,) a punto decimal (.)
-                    const precioLimpio = precioStr.replace(',', '.');
+                    // Esto es útil si Google Sheets aún pone comas, aunque el separador de columna sea la coma.
+                    const precioLimpio = precioStr.replace(',', '.'); 
                     const precio = parseFloat(precioLimpio);
 
                     if (isNaN(precio)) {
